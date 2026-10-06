@@ -1,9 +1,10 @@
-import { BIKE, COMBAT, UI } from '../core/constants.js';
+import { BIKE, COMBAT, UI, RACE, DIFFICULTIES } from '../core/constants.js';
 import { events } from '../core/Events.js';
 
 export class HUD {
-  constructor(bike, input, combat) {
+  constructor(bike, input, combat, race) {
     this.bike = bike;
+    this.race = race;
     this.combat = combat;
     this.hitTime = 0;
     this.input = input;
@@ -12,7 +13,7 @@ export class HUD {
     this.takedowns = 0;
     this.messageTime = 0;
     this.nodes = {};
-    for (const id of ['speed', 'hpbar', 'stbar', 'health-value', 'stamina-value', 'distance', 'takedowns', 'weapon', 'speedbar', 'warning', 'msg', 'menu', 'ride', 'menu-copy', 'cruise-status', 'attack-action', 'attack-target', 'combat-tip', 'hit-marker']) this.nodes[id] = document.getElementById(id);
+    for (const id of ['speed', 'hpbar', 'stbar', 'health-value', 'stamina-value', 'distance', 'takedowns', 'weapon', 'speedbar', 'warning', 'msg', 'menu', 'ride', 'menu-copy', 'cruise-status', 'attack-action', 'attack-target', 'combat-tip', 'hit-marker', 'race-position', 'race-time', 'race-remaining', 'race-progress', 'race-score', 'results', 'result-title', 'result-stats', 'result-order']) this.nodes[id] = document.getElementById(id);
     this.portrait = matchMedia('(any-pointer: coarse) and (orientation: portrait), (max-width: 600px) and (orientation: portrait)');
     this.portrait.addEventListener('change', () => {
       if (this.portrait.matches) this.setPaused(true);
@@ -20,7 +21,27 @@ export class HUD {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.setPaused(true);
     });
-    this.setPaused(true);
+    if (race) {
+      this.levelPickers = [document.getElementById('difficulty'), document.getElementById('retry-difficulty')];
+      for (const picker of this.levelPickers) {
+        for (const [key, level] of Object.entries(DIFFICULTIES)) {
+          const option = document.createElement('option'); option.value = key; option.textContent = level.label; picker.appendChild(option);
+        }
+        picker.value = race.difficulty;
+        picker.addEventListener('change', () => {
+          race.setDifficulty(picker.value);
+          this.syncDifficulty();
+        });
+      }
+      this.syncDifficulty();
+      events.on('raceState', () => this.syncRace());
+      events.on('countdown', ({ count }) => this.flash(count ? String(count) : 'GO!'));
+      events.on('raceReset', () => { this.takedowns = 0; this.hitTime = this.messageTime = 0; this.nodes.msg.textContent = ''; });
+      events.on('nearMiss', ({ points }) => this.flash(`CLOSE CALL +${points}`));
+      events.on('raceFinished', (result) => this.showResults(result));
+      document.getElementById('retry').addEventListener('click', () => this.setPaused(false));
+      this.syncRace();
+    } else this.setPaused(true);
     document.getElementById('pause').addEventListener('click', () => this.setPaused(true));
     this.nodes.ride.addEventListener('click', () => this.setPaused(false));
     addEventListener('keydown', (event) => {
@@ -40,8 +61,48 @@ export class HUD {
       }
     });
   }
+  syncDifficulty() {
+    for (const picker of this.levelPickers) {
+      picker.value = this.race.difficulty;
+      picker.disabled = this.race.state !== 'menu' && this.race.state !== 'results';
+    }
+    document.getElementById('difficulty-hint').textContent = DIFFICULTIES[this.race.difficulty].description;
+  }
+  syncRace() {
+    this.syncDifficulty();
+    const state = this.race.state;
+    this.paused = state === 'menu' || state === 'paused' || state === 'results';
+    this.started = state !== 'menu';
+    this.input.setEnabled(state === 'racing');
+    document.body.classList.toggle('is-paused', this.paused);
+    this.nodes.menu.hidden = state !== 'menu' && state !== 'paused';
+    this.nodes.results.hidden = state !== 'results';
+    if (state === 'paused') {
+      this.nodes.ride.innerHTML = 'RESUME RACE <span>↗</span>';
+      this.nodes['menu-copy'].textContent = 'Race paused. Your timer and rivals are paused too.';
+    }
+  }
+  showResults(result) {
+    this.nodes.msg.textContent = '';
+    this.nodes['result-title'].textContent = result.finished ? result.rank === 1 ? 'VICTORY!' : `FINISHED #${result.rank}` : 'TIME UP';
+    this.nodes['result-stats'].textContent = `${this.formatTime(result.time)} · ${result.score} POINTS · ${result.takedowns} TAKEDOWNS · ${result.nearMisses} CLOSE CALLS`;
+    this.nodes['result-order'].replaceChildren();
+    for (let i = 0; i < this.race.standings.length; i++) {
+      const entry = this.race.standings[i], row = document.createElement('li');
+      row.textContent = `${i + 1}. ${entry.rider.name} — ${entry.finishTime === null ? 'Not finished' : this.formatTime(entry.finishTime)}`;
+      if (entry.rider === this.bike) row.className = 'you';
+      this.nodes['result-order'].appendChild(row);
+    }
+  }
+  formatTime(seconds) { return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(1).padStart(4, '0')}`; }
   setPaused(paused) {
     if (!paused && this.portrait.matches) return;
+    if (this.race) {
+      if (paused) this.race.pause();
+      else if (this.race.state === 'paused') this.race.resume();
+      else this.race.start();
+      return;
+    }
     this.paused = paused;
     this.input.setEnabled(!paused);
     document.body.classList.toggle('is-paused', paused);
@@ -55,6 +116,13 @@ export class HUD {
   flash(message) { this.nodes.msg.textContent = message; this.messageTime = UI.messageDuration; }
   update(dt) {
     const b = this.bike, n = this.nodes;
+    if (this.race) {
+      n['race-position'].textContent = `${this.race.rank} / ${this.race.riders.length}`;
+      n['race-time'].textContent = this.formatTime(this.race.elapsed);
+      n['race-remaining'].textContent = `${(Math.max(0, this.race.finishS - b.s) / 1000).toFixed(2)} KM LEFT`;
+      n['race-progress'].style.width = `${Math.max(0, Math.min(100, (b.s - RACE.startS) / RACE.length * 100))}%`;
+      n['race-score'].textContent = `${this.race.score} PTS`;
+    }
     this.hitTime = Math.max(0, this.hitTime - dt);
     n['hit-marker'].classList.toggle('landed', this.hitTime > 0);
     const ready = !b.down && b.melee.state === 'idle' && b.stamina >= b.melee.weapon.cost;

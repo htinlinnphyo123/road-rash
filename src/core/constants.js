@@ -30,12 +30,12 @@ export const WALL = { shoulder: 2.0, scrape: 14 }; // scrape = m/s² decel while
 export const COMBAT = {
   inputBuffer: 0.2, targetHalfWidth: 0.3, targetHalfLength: 0.9,
   maxStamina: 100, staminaRegen: 22, regenDelay: 0.7,
-  maxBalance: 100, balanceRegen: 20, balancePerHit: 34, // 3 quick hits = knocked off
+  maxBalance: 100, balanceRegen: 20, balancePerHit: 40, // 3 quick hits = knocked off
   respawnDelay: 2.4, invuln: 1.6, slideDecel: 14,
   // Hitbox is expressed in the attacker's local frame (fwd = forward, side = outward from the bike).
   // The box sweeps from `back` to `front` while the swing is active.
   weapons: {
-    bat:  { cost: 22, windup: 0.1, active: 0.22, recovery: 0.26, damage: 14, knock: 12, stagger: 0.5,
+    bat:  { cost: 22, windup: 0.1, active: 0.22, recovery: 0.26, damage: 18, knock: 15, stagger: 0.65,
             inner: 0.25, reach: 2.4, halfLen: 1.0, back: -1.0, front: 1.2, length: 2.2 },
     kick: { cost: 12, windup: 0.08, active: 0.10, recovery: 0.22, damage: 8, knock: 8, stagger: 0.35,
             inner: 0.25, reach: 1.3, halfLen: 0.6, back: -0.6, front: 0.8, length: 1.0 },
@@ -54,3 +54,40 @@ export const RIDER_CAMERA = {
   baseFov: 64, speedFov: 8, leanAmount: 0.06,
   shakeScale: 0.035, shakeDecay: 8,
 };
+
+export const RACE = {
+  startS: 40, length: 4500, countdown: 3, maxTime: 240,
+  gridGap: 7, gridLane: 2.3,
+  takedownPoints: 250, hitPoints: 40, nearMissPoints: 75,
+  finishPoints: 1000, positionPoints: 250,
+  nearMissMin: 1.25, nearMissMax: 2.2, nearMissSpeed: 20,
+};
+export const AI = {
+  laneLimit: 5.4, lookAhead: 35, lateralGain: 0.13, steerGain: 8,
+  headingLimit: 0.23, response: 1.8, acceleration: 9,
+  curveAcceleration: 19, minimumSpeed: 25, rubberBand: 0.07, maxCatchup: 7,
+  approachRange: 32, attackOffset: 1.8, attackCooldown: 2.1,
+  trafficHorizon: 1.5, trafficMargin: 9, trafficLaneGap: 2.3,
+};
+export const RIVALS = [
+  { name: 'RAVEN', style: 'BRAWLER', color: 0xb83bce, shirt: 0x322240, cruise: 53, aggression: 1 },
+  { name: 'NOVA', style: 'SPRINTER', color: 0x43c5df, shirt: 0x173746, cruise: 57, aggression: 0.35 },
+  { name: 'AXLE', style: 'BALANCED', color: 0xe7b53a, shirt: 0x44391e, cruise: 54, aggression: 0.7 },
+  { name: 'GHOST', style: 'DEFENSIVE', color: 0xc9d5d7, shirt: 0x263d33, cruise: 52, aggression: 0.2 },
+  { name: 'VIPER', style: 'BRAWLER', color: 0x77c744, shirt: 0x183c25, cruise: 56, aggression: 0.9 },
+  { name: 'BLAZE', style: 'SPRINTER', color: 0xf07532, shirt: 0x613226, cruise: 59, aggression: 0.5 },
+  { name: 'ONYX', style: 'BALANCED', color: 0x424958, shirt: 0x202635, cruise: 55, aggression: 0.8 },
+  { name: 'STORM', style: 'BRAWLER', color: 0x447bec, shirt: 0x202e59, cruise: 56, aggression: 1.1 },
+  { name: 'EMBER', style: 'SPRINTER', color: 0xe64567, shirt: 0x562737, cruise: 58, aggression: 0.6 },
+];
+export const AUDIO = {
+  engineVolume: 0.16, windVolume: 0.1, effectVolume: 0.28,
+  engineMinRate: 0.65, engineRateRange: 2.2, audibleRange: 35,
+};
+
+export const DIFFICULTIES = {
+  easy: { label: 'Easy', description: 'Slower rivals · fewer attacks', speed: -5, acceleration: 8, aggression: 0.65, cooldown: 1.4, catchup: 4, curve: 0.85 },
+  medium: { label: 'Medium', description: 'Fast pack · regular attacks', speed: 3, acceleration: 15, aggression: 1, cooldown: 1, catchup: 7, curve: 1 },
+  hard: { label: 'Hard', description: 'Relentless pace · aggressive combat', speed: 9, acceleration: 23, aggression: 1.5, cooldown: 0.6, catchup: 10, curve: 1.2 },
+};
+export const HIT_FX = { duration: 0.38, recoilDuration: 0.5, recoilAngle: 0.38, flashDuration: 0.18, playerShake: 0.9, attackShake: 0.65 };

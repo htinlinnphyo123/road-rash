@@ -5,7 +5,7 @@ import { Input } from './core/Input.js';
 import { AssetManager } from './core/AssetManager.js';
 import { events } from './core/Events.js';
 import manifest from './core/manifest.js';
-import { COMBAT } from './core/constants.js';
+import { COMBAT, RIVALS, HIT_FX } from './core/constants.js';
 import { PhysicsWorld } from './physics/PhysicsWorld.js';
 import { Track } from './world/Track.js';
 import { Road } from './world/Road.js';
@@ -13,7 +13,11 @@ import { Props } from './world/Props.js';
 import { Barriers } from './world/Barriers.js';
 import { Traffic } from './entities/Traffic.js';
 import { PlayerBike } from './entities/PlayerBike.js';
-import { DummyRider } from './entities/DummyRider.js';
+import { AIRider } from './ai/AIRider.js';
+import { Race } from './race/Race.js';
+import { FinishLine } from './world/FinishLine.js';
+import { GameAudio } from './audio/GameAudio.js';
+import { HitEffects } from './combat/HitEffects.js';
 import { Combat } from './combat/Combat.js';
 import { RiderCamera } from './camera/RiderCamera.js';
 
@@ -34,30 +38,28 @@ async function boot() {
   const bike = new PlayerBike(gfx.scene, physics, track, input);
   const chase = new RiderCamera(gfx.camera);
 
-  const dummySpecs = [
-    { s: 60,  lat: -3, cruise: 26, color: 0x2f6fd0, shirt: 0x1d3f7a },
-    { s: 100, lat: 3,  cruise: 32, color: 0x2aa05a, shirt: 0x14502d },
-    { s: 140, lat: 0,  cruise: 29, color: 0xe0b422, shirt: 0x7a5d10 },
-    { s: 180, lat: -2, cruise: 35, color: 0x8a3fc0, shirt: 0x45206a },
-  ];
-  const dummies = dummySpecs.map((o) => new DummyRider(gfx.scene, physics, track, o));
-  const riders = [bike, ...dummies];
+  const opponents = RIVALS.map((spec, i) => new AIRider(gfx.scene, physics, track, { ...spec, lat: i % 2 ? 3 : -3 }, bike, traffic));
+  bike.name = 'YOU';
+  const riders = [bike, ...opponents];
   const combat = new Combat(riders);
-  bike.combat = combat;
-
-  const hud = new HUD(bike, input, combat);
+  for (const rider of riders) rider.combat = combat;
+  const race = new Race(riders, bike, track, traffic);
+  const finish = new FinishLine(gfx.scene, track, race.finishS);
+  const hud = new HUD(bike, input, combat, race);
+  const audio = new GameAudio(assets, bike, race);
+  const hitEffects = new HitEffects(gfx.scene, riders, bike, document.getElementById('impact-flash'));
 
   let debug = null;
   if (location.search.includes('debug')) {
     const { default: CannonDebugger } = await import('cannon-es-debugger');
     debug = new CannonDebugger(gfx.scene, physics.world, { color: 0x00ff88 });
-    window.dbg = { bike, riders, COMBAT }; // e.g. dbg.bike.melee.setWeapon('kick')
+    window.dbg = { bike, riders, COMBAT, race, traffic, gfx }; // e.g. dbg.bike.melee.setWeapon('kick')
   }
 
   events.on('impact', ({ rider, speed }) => { if (rider === bike) chase.addShake(Math.min(1, speed / 30)); });
   events.on('hit', ({ attacker, target }) => {
-    if (target === bike) chase.addShake(0.6);
-    else if (attacker === bike) chase.addShake(0.3);
+    if (target === bike) chase.addShake(HIT_FX.playerShake);
+    else if (attacker === bike) chase.addShake(HIT_FX.attackShake);
   });
   barriers.update(bike.s);
   chase.update(1, bike);
@@ -75,34 +77,30 @@ async function boot() {
 
   new Game({
     fixedUpdate(dt) {
-      if (hud.paused) return;
+      if (!race.beforeStep(dt)) return;
       barriers.update(bike.s);
       traffic.fixedUpdate(dt, bike.s);
-
-      // Keep the test dummies in play: leapfrog any that fall far behind or ahead
-      for (const d of dummies) {
-        if (d.s < bike.s - 120 || d.s > bike.s + 320) {
-          d.placeAt(bike.s + 120 + Math.random() * 80, d.laneLat, d.cruise);
-        }
-      }
 
       riders.forEach((r) => r.fixedUpdate(dt));
       combat.fixedUpdate();
       physics.step(dt);
       riders.forEach((r) => r.postStep());
       traffic.postStep();
+      race.postStep(dt);
     },
     update(alpha, dt) {
-      if (hud.paused) { alpha = 1; dt = 0; }
+      if (race.state !== 'racing') { alpha = 1; dt = 0; }
       riders.forEach((r) => r.render(alpha, dt));
       traffic.render(alpha);
       road.update(bike.s, bike.position);
       props.update(bike.s);
       gfx.followSun(bike.position);
-      if (!hud.paused) chase.update(dt, bike);
+      chase.update(dt, bike);
+      hitEffects.update(dt, gfx.camera);
       debug?.update();
       gfx.render();
       hud.update(dt);
+      audio.update();
     },
   }).start();
 }

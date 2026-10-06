@@ -95,6 +95,22 @@ export class Rider {
     this.currYaw = this.prevYaw = h;
   }
 
+  resetRace(s, lat) {
+    this.placeAt(s, lat, 0);
+    this.health = BIKE.maxHealth; this.stamina = COMBAT.maxStamina; this.balance = COMBAT.maxBalance;
+    this.staminaDelay = this.stagger = this.invuln = this.impactCd = this.downT = 0;
+    this.down = false; this.lean = this.leanTarget = 0;
+    this.offRoad = this.scraping = false;
+    this.riderMesh.visible = this.mesh.visible = true;
+    this.melee.cancel(); this.ragdoll.hide();
+    if (this.isPlayer) this.rideTime = 0;
+    if (this.attackCooldown !== undefined) this.attackCooldown = 0;
+    this.body.force.setZero(); this.body.torque.setZero();
+    this.body.quaternion.setFromEuler(0, this.yaw, 0);
+    this.body.angularVelocity.setZero();
+    this.render(1, 0);
+  }
+
   receiveHit({ nx, nz, damage, knock, stagger, attacker }) {
     if (this.down || this.invuln > 0) return false;
     this.health = Math.max(0, this.health - damage);
@@ -188,7 +204,7 @@ export class Rider {
       this.downT -= dt;
       if (this.downT <= 0) { this.respawn(); }
     } else {
-      this.balance = Math.min(COMBAT.maxBalance, this.balance + COMBAT.balanceRegen * dt);
+      if (this.stagger <= 0) this.balance = Math.min(COMBAT.maxBalance, this.balance + COMBAT.balanceRegen * dt);
       if (this.stagger > 0) { c = this._stag; c.steer = inp.steer * 0.35; }
       else if (inp.attackL) this.melee.tryStart(-1);
       else if (inp.attackR) this.melee.tryStart(1);
