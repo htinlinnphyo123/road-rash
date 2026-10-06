@@ -30,7 +30,7 @@ function setup() {
     for (const rider of riders) rider.postStep();
     traffic.postStep(); race.postStep(1 / 60);
   };
-  return { player, opponents, riders, race, traffic, track, input, combat, step, scene };
+  return { player, opponents, riders, race, traffic, track, input, combat, step, scene, physics };
 }
 
 test('countdown and timer pause, finish ordering and retry fully reset the race', () => {
@@ -144,4 +144,64 @@ test('landed hits recoil, reuse burst geometry, pause visually, and three quick 
   blow(); blow(); assert(target.down);
   fx.update(1, camera); assert.equal(fx.effects[1].burst.visible, false);
   fx.reset(); assert.equal(target.riderMesh.rotation.z, 0); assert.equal(scene.children.length, count);
+});
+
+
+test('police trigger naturally, participate in combat, pause, reward once and reuse pool on retry', async () => {
+  const { Police } = await import('../src/ai/Police.js');
+  const { POLICE } = await import('../src/core/constants.js');
+  const { scene, physics, track, player, traffic, combat, race, riders } = setup();
+  const police = new Police(scene, physics, track, player, traffic, combat, race);
+  const fighters = [...riders]; police.addTo(fighters); combat.fighters = fighters;
+  const objects = scene.children.length, bodies = physics.world.bodies.length;
+  race.start(); race.setState('racing');
+  police.fixedUpdate(POLICE.firstAlert + 0.01); assert(police.active);
+  police.fixedUpdate(POLICE.spawnDelay + 0.01); assert.equal(police.count, 2);
+  assert.equal(race.riders.length, 10); assert.equal(combat.fighters.length, 12);
+  const cop = police.cops[0]; player.placeAt(120, 0, 30); cop.placeAt(120, 1.8, 30);
+  assert.equal(combat.autoAttackSide(player), 1);
+  player.melee.tryStart(1); player.melee.update(COMBAT.weapons.bat.windup + 0.1); combat.fixedUpdate();
+  assert(cop.health < BIKE.maxHealth, 'police must receive real combat damage');
+  race.pause(); const time = police.chaseTime; police.fixedUpdate(10); assert.equal(police.chaseTime, time);
+  race.resume(); const score = race.score;
+  police.fixedUpdate(POLICE.chaseDuration + 0.1);
+  assert(!police.active); assert.equal(race.score, score + POLICE.escapePoints);
+  police.fixedUpdate(0.1); assert.equal(race.score, score + POLICE.escapePoints);
+  race.setState('results'); race.start();
+  assert.equal(police.count, 0); assert(police.cops.every(c => c.down && c.body.collisionFilterMask === 0));
+  assert.equal(scene.children.length, objects); assert.equal(physics.world.bodies.length, bodies);
+});
+
+test('sparks have visible geometry, respond to collisions and hits, and clear on retry', async () => {
+  const { Particles } = await import('../src/visuals/Particles.js');
+  const { scene, player, opponents } = setup();
+  const particles = new Particles(scene), camera = new THREE.PerspectiveCamera();
+  const count = scene.children.length;
+  events.emit('impact', { rider: player, speed: 18, kind: 'traffic' });
+  assert(particles.sparks.some(s => s.mesh.visible));
+  particles.sparks[0].mesh.geometry.computeBoundingBox();
+  assert(particles.sparks[0].mesh.geometry.boundingBox.max.x >= 0.5);
+  const life = particles.sparks[0].p.life;
+  particles.update(0, [player], null, camera); assert.equal(particles.sparks[0].p.life, life);
+  events.emit('hit', { attacker: player, target: opponents[0], weapon: 'bat' });
+  particles.update(2, [], null, camera); assert(particles.sparks.every(s => !s.mesh.visible));
+  events.emit('raceReset', {}); assert(particles.smokes.every(s => !s.mesh.visible));
+  assert.equal(scene.children.length, count);
+});
+
+test('patrol bikes advance through actual physics with finite interpolated transforms', async () => {
+  const { Police } = await import('../src/ai/Police.js');
+  const { scene, physics, track, player, traffic, combat, race, riders } = setup();
+  const police = new Police(scene, physics, track, player, traffic, combat, race);
+  const fighters = [...riders]; police.addTo(fighters); combat.fighters = fighters;
+  race.start(); race.setState('racing'); player.placeAt(300, 0, 30);
+  police.arm(); police.trySpawn(); const start = police.cops[0].s;
+  for (let i = 0; i < 300; i++) {
+    player.fixedUpdate(1 / 60); police.fixedUpdate(1 / 60); combat.fixedUpdate();
+    physics.step(1 / 60); player.postStep(); police.postStep(); police.update(1 / 60, 0.5);
+  }
+  assert(police.cops[0].s > start + 50);
+  for (const cop of police.cops) {
+    assert(Number.isFinite(cop.mesh.position.x)); assert(Number.isFinite(cop.mesh.rotation.y));
+  }
 });

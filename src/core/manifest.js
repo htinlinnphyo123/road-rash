@@ -7,6 +7,7 @@ export default {
     // asphalt: '/textures/asphalt.jpg',
   },
   sounds: {
+    siren: { src: ['/audio/siren.wav'], loop: true },
     engine: { src: ['/audio/engine.wav'], loop: true },
     wind: { src: ['/audio/wind.wav'], loop: true },
     swing: { src: ['/audio/swing.wav'] },

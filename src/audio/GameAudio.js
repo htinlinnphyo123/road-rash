@@ -1,5 +1,5 @@
 import { Howler } from 'howler';
-import { AUDIO, BIKE } from '../core/constants.js';
+import { AUDIO, BIKE, POLICE } from '../core/constants.js';
 import { events } from '../core/Events.js';
 
 export class GameAudio {
@@ -7,7 +7,7 @@ export class GameAudio {
     this.bike = bike; this.race = race; this.sounds = assets.sounds;
     this.unlocked = false; this.muted = false; this.running = false;
     this.engineId = null; this.windId = null;
-    this.lastRate = -1;
+    this.lastRate = -1; this.pursuit = false; this.sirenId = null;
     const unlock = () => {
       if (Howler.ctx?.state === 'suspended') Howler.ctx.resume().catch(() => {});
       this.unlocked = true;
@@ -20,6 +20,8 @@ export class GameAudio {
       mute.textContent = this.muted ? 'SOUND OFF' : 'SOUND ON';
       mute.setAttribute('aria-pressed', String(this.muted));
     });
+    events.on('policeAlert', ({ active }) => { this.pursuit = active; if (!active) { this.sounds.get('siren')?.stop(); this.sirenId = null; } });
+    events.on('policeEscape', () => this.play('finish'));
     events.on('swing', ({ rider }) => { if (this.audible(rider)) this.play('swing'); });
     events.on('hit', ({ attacker, target }) => { if (this.audible(attacker) || target === bike) this.play('hit'); });
     events.on('impact', ({ rider, crash }) => { if (rider === bike) this.play(crash ? 'crash' : 'hit'); });
@@ -30,7 +32,7 @@ export class GameAudio {
     events.on('raceState', ({ state }) => {
       if (state === 'paused' || state === 'menu' || state === 'results') {
         for (const sound of this.sounds.values()) sound.stop();
-        this.running = false; this.engineId = this.windId = null;
+        this.running = false; this.engineId = this.windId = this.sirenId = null;
       }
     });
   }
@@ -45,6 +47,9 @@ export class GameAudio {
     const engine = this.sounds.get('engine'), wind = this.sounds.get('wind');
     if (!this.running) {
       this.engineId = engine.play(); this.windId = wind.play(); this.running = true; this.lastRate = -1;
+    }
+    if (this.pursuit && this.sirenId === null) {
+      const siren = this.sounds.get('siren'); siren.volume(POLICE.sirenVolume); this.sirenId = siren.play();
     }
     const speed = this.bike.speed / BIKE.maxSpeed;
     const rate = AUDIO.engineMinRate + speed * AUDIO.engineRateRange;

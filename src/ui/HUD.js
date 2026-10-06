@@ -1,11 +1,13 @@
-import { BIKE, COMBAT, UI, RACE, DIFFICULTIES } from '../core/constants.js';
+import { BIKE, COMBAT, UI, RACE, DIFFICULTIES, POLICE } from '../core/constants.js';
 import { events } from '../core/Events.js';
 
 export class HUD {
-  constructor(bike, input, combat, race) {
+  constructor(bike, input, combat, race, police = null, pickups = null) {
     this.bike = bike;
     this.race = race;
     this.combat = combat;
+    this.police = police;
+    this.pickups = pickups;
     this.hitTime = 0;
     this.input = input;
     this.paused = true;
@@ -38,6 +40,9 @@ export class HUD {
       events.on('countdown', ({ count }) => this.flash(count ? String(count) : 'GO!'));
       events.on('raceReset', () => { this.takedowns = 0; this.hitTime = this.messageTime = 0; this.nodes.msg.textContent = ''; });
       events.on('nearMiss', ({ points }) => this.flash(`CLOSE CALL +${points}`));
+      events.on('pickup', ({ weapon, refill }) => this.flash(refill ? `${weapon.toUpperCase()} +STAMINA REFILL` : `${weapon.toUpperCase()} EQUIPPED`));
+      events.on('policeAlert', ({ active }) => { if (active) this.flash('POLICE INCOMING · KEEP MOVING'); });
+      events.on('policeEscape', ({ points }) => this.flash(points ? `PURSUIT SURVIVED +${points}` : 'PURSUIT ENDED'));
       events.on('raceFinished', (result) => this.showResults(result));
       document.getElementById('retry').addEventListener('click', () => this.setPaused(false));
       this.syncRace();
@@ -50,7 +55,7 @@ export class HUD {
     addEventListener('blur', () => { if (this.started) this.setPaused(true); });
     events.on('dismount', ({ rider, attacker }) => {
       if (rider === bike) this.flash('WIPEOUT');
-      else if (attacker === bike) { this.takedowns++; this.flash('TAKEDOWN'); }
+      else if (attacker === bike) { this.takedowns++; this.flash(this.police?.cops.includes(rider) ? 'PATROL TAKEN DOWN' : 'TAKEDOWN'); }
     });
     events.on('respawn', ({ rider }) => { if (rider === bike) this.flash('BACK IN THE SADDLE'); });
     events.on('hit', ({ attacker, target, weapon }) => {
@@ -143,8 +148,13 @@ export class HUD {
     n.weapon.textContent = b.melee.weaponName.toUpperCase();
     document.body.classList.toggle('wrong-way', !!(b.wrongWay && b.wrongWayT <= UI.wrongWayPenaltyTime));
     document.body.classList.toggle('wrong-way-penalty', !!(b.wrongWay && b.wrongWayT > UI.wrongWayPenaltyTime));
+    const copsActive = !!(this.police && this.police.active && this.police.count > 0);
+    const copsIncoming = !!(this.police && this.police.active && this.police.spawnT > 0);
+    document.body.classList.toggle('police-active', copsActive);
     if (b.wrongWay && b.wrongWayT > UI.wrongWayPenaltyTime) n.warning.textContent = '⚠ WRONG WAY · SLOWING DOWN';
     else if (b.wrongWay) n.warning.textContent = '⚠ TURN AROUND — WRONG WAY';
+    else if (copsIncoming) n.warning.textContent = `🚨 POLICE INCOMING IN ${Math.ceil(this.police.spawnT)}s`;
+    else if (copsActive) n.warning.textContent = `🚨 PURSUIT · ${this.police.count} UNIT${this.police.count > 1 ? 'S' : ''} · OUTRUN OR SURVIVE ${Math.ceil(POLICE.chaseDuration - this.police.chaseTime)}s`;
     else n.warning.textContent = b.down ? 'RECOVERING…' : hp < UI.lowHealthPercent ? 'LOW HEALTH · RIDE CAREFULLY' : b.offRoad ? 'OFF ROAD · RETURN TO ASPHALT' : '';
     document.body.classList.toggle('low-health', hp < UI.lowHealthPercent);
   }

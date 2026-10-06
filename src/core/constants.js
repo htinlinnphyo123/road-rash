@@ -32,6 +32,7 @@ export const COMBAT = {
   maxStamina: 100, staminaRegen: 22, regenDelay: 0.7,
   maxBalance: 100, balanceRegen: 20, balancePerHit: 40, // 3 quick hits = knocked off
   respawnDelay: 2.4, invuln: 1.6, slideDecel: 14,
+  pickupInvuln: 4.0, pickupFlash: 1.2,
   // Hitbox is expressed in the attacker's local frame (fwd = forward, side = outward from the bike).
   // The box sweeps from `back` to `front` while the swing is active.
   weapons: {
@@ -44,6 +45,24 @@ export const COMBAT = {
     chain: { cost: 18, windup: 0.06, active: 0.28, recovery: 0.18, damage: 12, knock: 10, stagger: 0.45,
              inner: 0.25, reach: 3.1, halfLen: 0.8, back: -0.6, front: 1.0, length: 1.6 },
   },
+};
+export const PICKUPS = {
+  spacing: 220, spawnAhead: 14, spawnBehind: 3, perSideChance: 0.42,
+  halfRoadInset: 1.6, respawnCooldown: 120, triggerRadius: 1.8, bobAmp: 0.18, bobFreq: 2.4,
+  weaponWeights: { bat: 2, pipe: 3, chain: 3 }, // bat default, pipe + chain are pickups (heavier weighted)
+};
+export const POLICE = {
+  takedownThreshold: 2, maxCops: 2, spawnDelay: 4,
+  firstAlert: 18, cooldown: 35, chaseDuration: 24, escapeDistance: 100, escapePoints: 400, spawnBehind: 35, spawnGap: 14,
+  sirenVolume: 0.12,
+  color: 0x2d72ff, shirt: 0x0b1f36, name: 'COP',
+  cruise: 60, aggression: 1.3, style: 'ENFORCER',
+  dismountPenalty: 3, huntRange: 120, ramChance: 0.6,
+};
+export const FX = {
+  smokeMax: 100, smokeRate: 12, smokeLife: 1.1, smokeGrow: 2.4,
+  sparkMax: 90, sparkRate: 35, sparkLife: 0.55, sparkSpeed: 7.5,
+  slipThreshold: 0.45, slipSmokeMinSpeed: 9, railScrapeMinSpeed: 7,
 };
 export const UI = { messageDuration: 1.8, lowHealthPercent: 30, hitMarkerDuration: 0.22,
   wrongWayWarnTime: 0.6, wrongWayPenaltyTime: 1.8, wrongWayMinAngle: 1.1 };

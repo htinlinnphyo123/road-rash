@@ -55,12 +55,13 @@ src/
     Events.js            Tiny event bus: events.on / events.emit
     AssetManager.js      GLTF / texture / Howler preloader
     manifest.js          Local audio manifest; vehicles remain procedural
-    constants.js         ALL tunable numbers: FIXED_DT, ROAD, BIKE, GROUP, WALL, COMBAT, UI, AUTO_DRIVE, RIDER_CAMERA, RACE, AI, RIVALS, AUDIO, DIFFICULTIES, HIT_FX
+    constants.js         ALL tunable numbers: FIXED_DT, ROAD, BIKE, GROUP, WALL, COMBAT, UI, AUTO_DRIVE, RIDER_CAMERA, RACE, AI, RIVALS, AUDIO, DIFFICULTIES, HIT_FX, POLICE, FX, PICKUPS
   world/
     Track.js             Procedural centerline in track space (s, lateral), project(), at(), pointAt()
     Road.js              Pooled road mesh chunks + grass plane
     Barriers.js          Pooled guardrail meshes + static Cannon colliders
     Props.js             Instanced roadside trees
+    Pickups.js           Existing pooled weapon crates (pipe/chain/bat)
     FinishLine.js        Static finish arch and checkered road marking
   physics/
     PhysicsWorld.js      cannon-es world, ground plane, materials
@@ -77,17 +78,20 @@ src/
   camera/
     RiderCamera.js       Close third-person camera, 4.2 m follow distance, mild lean and shake
   ai/AIRider.js          Track-space racing, traffic avoidance and combat brain
+  ai/Police.js           Two pooled patrol riders, timed pursuit and escape lifecycle
   race/Race.js           Countdown, ranking, scoring, finish/time limit and reset
   audio/GameAudio.js     Gesture-unlocked Howler loops and event effects
   ui/HUD.js              Event-driven HUD, start/countdown/results, race HUD, pause/resume, warnings
   visuals/Vehicles.js    Modern sport-bike, racing rider and coupe/fastback/sedan builders
+  visuals/PoliceBike.js  Patrol touring-bike panniers, windshield, bars and livery
+  visuals/Particles.js   Pooled collision/melee sparks and slip smoke
 ```
 
 ## 5. Architecture rules (do not violate)
 
 1. **Fixed timestep.** Gameplay and physics run in `fixedUpdate(dt)` at `FIXED_DT = 1/60`. Rendering and visual-only effects run in `update(alpha, dt)`. Never put gameplay logic in the render update.
 2. **Render interpolation.** Entities keep `prevPos/currPos` and `prevYaw/currYaw` and lerp with `alpha` in `render()`. Keep this pattern for any new moving entity.
-3. **Fixed update order** (see `main.js`): barriers.update -> traffic.fixedUpdate -> riders.fixedUpdate (which calls `think()` then `preStep()`) -> combat.fixedUpdate -> physics.step -> riders.postStep -> traffic.postStep -> race.postStep. race.beforeStep gates gameplay during countdown, pause and results. Insert new systems deliberately and keep this order.
+3. **Fixed update order** (see `main.js`): barriers.update -> traffic.fixedUpdate -> pickups.update -> riders.fixedUpdate (which calls `think()` then `preStep()`) -> police.fixedUpdate -> combat.fixedUpdate -> physics.step -> riders.postStep -> police.postStep -> traffic.postStep -> race.postStep. race.beforeStep gates gameplay during countdown, pause and results. Insert new systems deliberately and keep this order.
 4. **Track space is the shared language.** Position along the road is `s` (meters), lateral offset is `lat` (+right). Use `track.project(x, z, hintS, out)` to go world -> track, and `track.at(s, out)` / `track.pointAt(s, lat, outVec3)` to go track -> world. AI, rank, spawning, and respawning must use track space, not raw world coordinates.
 5. **Hybrid arcade physics.** Riders are Cannon bodies with `fixedRotation: true`. Speed, yaw, drift, and knockback are computed in code (`Rider.preStep`) and written into `body.velocity` each step. Cannon only handles gravity and contact resolution. Do not switch to force-based vehicle simulation without discussing it.
 6. **Collision classification uses `body.userData.kind`**: `'wall'`, `'traffic'`, `'bike'`. Riders also set `userData.entity`. Collision handling lives in `Rider.onCollide`; it uses the intended velocity (`rider.vx/vz`) because the solver may already have modified `body.velocity`.
@@ -103,6 +107,7 @@ src/
     - `respawn` `{rider}`
     - `raceState` `{state}`, `raceReset` `{}`, `countdown` `{count}`
     - `nearMiss` `{points}`, `raceFinished` `{finished, rank, time, score, takedowns, nearMisses, topSpeed}`
+    - `policeAlert` `{active}`, `policeEscape` `{points}`, `pickup` `{rider, weapon, refill?}`
     - `wrecked` is legacy from an earlier step and no longer emitted by `Rider`; remove if unused.
     UI, audio, and camera effects must subscribe to events and must not be called from inside combat or physics code.
 12. **Dependencies and network.** Do not add npm dependencies or network calls without asking the developer first.
@@ -134,6 +139,10 @@ src/
 12. RACE constants configure a 4.5 km race, three-second countdown, four-minute limit, live rank, score, close-call rewards, finish arch, results and full retry reset.
 13. AUDIO constants tune gesture-unlocked engine/wind loops and swing, hit, crash, countdown and finish effects. Original WAV assets are generated by scripts/generate-audio.py and loaded through the manifest. Sound toggle is available in the HUD.
 
+14. Two patrol bikes are preallocated and registered in Combat separately from the ten ranked racers. First alert starts after 18 racing seconds or two takedowns; four-second warning precedes spawn. Outrun every officer by 100 m, dismount both, or survive 24 seconds for 400 points while upright. A 35-second cooldown follows. Police use selected difficulty and can attack and receive hits. Pause freezes pursuit; results/reset park officers and silence sirens. POLICE contains timings, spawn spacing and rewards.
+15. Patrol bikes have distinct white touring bodywork, panniers, crash bars, tall shields and alternating red/blue lights. Local synthesized siren is part of manifest and respects pause/mute.
+16. FX particles use reusable pools; every impact/hit can produce visible spark streaks. Slip smoke handles either drift direction; particles freeze on pause and reset on retry. Debug P/L/B/V controls are enabled only with ?debug during racing. Existing pipe/chain weapon pickups are retained.
+
 ## 8. Known limitations / tech debt
 
 - Track is flat. No hills; hills would need a heightfield or trimesh collider and track-space `y`.
@@ -145,6 +154,7 @@ src/
 - Mirrors use decorative glass, not rendered rear views.
 - Shadow shimmer is possible at high speed because the sun follows the player each frame (texel snapping not implemented).
 - AI uses bounded lane/traffic heuristics; deliberate sideswipe maneuvers and richer tactics remain.
+- Police are motorcycle units using arcade rider physics; no patrol cars or arrest/custody state.
 - One race route; no persistent unlocks, garage or championship progression yet.
 
 ## 9. Roadmap
@@ -165,8 +175,9 @@ src/
 - Tailwind optional; keep the HUD out of `main.js`
 
 **Step 8 — Polish & content**
+- Done: pooled police motorcycle pursuit, distinct patrol model, siren, warnings, survival reward and visible collision/melee sparks. Existing pipe/chain pickups retained.
 - Done: close third-person rider camera, modern sculpted sport-bike and three car body styles, touch landscape layout and progressive auto-throttle. Remaining: physical-device performance pass and optional tilt steering.
-- GLB models for bikes/riders/cars, weapon variety (pipe, chain), pickups, police/pursuit, track themes, shadow texel snapping, performance pass (instancing, LOD)
+- GLB models for bikes/riders/cars, weapon variety (pipe, chain), additional pickups, patrol cars, track themes, shadow texel snapping, performance pass (instancing, LOD)
 
 ## 10. How to verify any change
 
@@ -184,6 +195,7 @@ src/
 
 12. `node --test tests/*.test.js` also verifies race state, finish order, scoring, AI attacks/avoidance, full-distance physics simulation and retry object reuse.
 13. Check countdown, sound toggle, pause silence, results and retry in-browser. Check difficulty selection before start and retry, ten-racer standings scrolling on phone, and contact/recoil effects. Tests also cover difficulty locking and hit-effect reuse/reset.
+14. Verify automatic police warning/spawn, police receiving hits, pursuit reward once, pause/resume and retry cleanup. `node --test tests/*.test.js` covers police and spark pooling/lifecycle as well as the race/control regressions.
 
 ## 11. Working agreement for AI agents
 

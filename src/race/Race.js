@@ -16,6 +16,7 @@ export class Race {
     for (const car of traffic.cars) this.nearCars.set(car, { previous: 0, armed: false, closest: Infinity });
     events.on('hit', ({ attacker }) => { if (this.state === 'racing' && attacker === player) { this.hits++; this.score += RACE.hitPoints; } });
     events.on('dismount', ({ attacker }) => { if (this.state === 'racing' && attacker === player) { this.takedowns++; this.score += RACE.takedownPoints; } });
+    events.on('policeEscape', ({ points }) => { if (this.state === 'racing') this.score += points; });
     this.reset();
   }
   setDifficulty(key) {
