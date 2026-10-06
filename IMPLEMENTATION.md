@@ -39,3 +39,10 @@ Existing uncommitted police/pickup/particle additions were inspected and retaine
 - Created `src/visuals/PoliceBike.js` and `public/audio/siren.wav`; edited existing `src/ai/Police.js`, `src/visuals/Particles.js`, `src/main.js`, `src/race/Race.js`, `src/ui/HUD.js`, `src/audio/GameAudio.js`, `src/core/constants.js`, `src/core/manifest.js`, `scripts/generate-audio.py`, `src/style.css`, `tests/race.test.js` and `AGENTS.md`.
 - Expanded `POLICE` with pursuit timing/spawn/reward/audio settings; tuned `FX` emission rates. No dependencies or downloaded assets added.
 - Build and 18 tests pass. Tests include natural police trigger, registration in combat, damage, pause, one-time score reward, pool reuse, spark scale, actual patrol physics movement and retry cleanup. Physical-device frame rate and speaker balance still need testing.
+
+## Mobile zoom and human rider update
+
+- Added `touch-action: manipulation` to page/menu controls to stop double-tap zoom; driving controls/canvas retain `none`. Menu scrolling and pinch zoom remain available. Actual iOS/Android double-tap behavior needs physical-device confirmation.
+- New `src/visuals/HumanRider.js` builds a crouched human silhouette with an elliptical torso, tapered rounded limbs, proportional full-face helmet, collar/neck, bent knees/elbows, gloves, boots and restrained suit panels. Existing recoil and bike lean still apply.
+- Files: `src/visuals/HumanRider.js`, `src/visuals/Vehicles.js`, `src/style.css`, `AGENTS.md`, `IMPLEMENTATION.md`. No new gameplay constants or dependencies.
+- Production build and 18 regression tests pass, including close-camera fit and touch cancellation.

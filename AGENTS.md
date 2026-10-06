@@ -83,6 +83,7 @@ src/
   audio/GameAudio.js     Gesture-unlocked Howler loops and event effects
   ui/HUD.js              Event-driven HUD, start/countdown/results, race HUD, pause/resume, warnings
   visuals/Vehicles.js    Modern sport-bike, racing rider and coupe/fastback/sedan builders
+  visuals/HumanRider.js  Anatomical crouched rider, tapered limbs, gloves, boots and full-face helmet
   visuals/PoliceBike.js  Patrol touring-bike panniers, windshield, bars and livery
   visuals/Particles.js   Pooled collision/melee sparks and slip smoke
 ```
@@ -143,11 +144,14 @@ src/
 15. Patrol bikes have distinct white touring bodywork, panniers, crash bars, tall shields and alternating red/blue lights. Local synthesized siren is part of manifest and respects pause/mute.
 16. FX particles use reusable pools; every impact/hit can produce visible spark streaks. Slip smoke handles either drift direction; particles freeze on pause and reset on retry. Debug P/L/B/V controls are enabled only with ?debug during racing. Existing pipe/chain weapon pickups are retained.
 
+17. Mobile surfaces use touch-action: manipulation to suppress double-tap zoom; canvas and driving controls use none. Menu scrolling and pinch zoom remain available. Rider visuals now use a shaped torso, tapered rounded limbs, smaller helmet, articulated riding posture and restrained protective gear.
+
 ## 8. Known limitations / tech debt
 
 - Track is flat. No hills; hills would need a heightfield or trimesh collider and track-space `y`.
 - `Track` stores every centerline sample forever (about 25k per 50 km). Fine for now; use a ring buffer later.
 - Ragdoll is visual only and does not collide with guardrails.
+- Riders remain procedural meshes, not scanned/skinned human assets; full skeletal animation remains future work.
 - Vehicles are original modern designs with sculpted procedural bodywork, not branded replicas or photorealistic assets. Audio is loaded through the manifest; GLB vehicle assets are not yet used.
 - Sounds are original synthesized effects, not recorded motorcycle audio. Listening balance still benefits from physical-device testing.
 - Mobile uses touch buttons, not device-tilt steering or forced orientation locking. Phone layout is browser-verified; physical-device performance and multi-touch still need device testing.

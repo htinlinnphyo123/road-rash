@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { makeHumanRider } from './HumanRider.js';
 
 const rubber = new THREE.MeshStandardMaterial({ color: 0x16191b, roughness: 0.95 });
 const metal = new THREE.MeshStandardMaterial({ color: 0xadb5b9, metalness: 0.8, roughness: 0.28 });
@@ -97,25 +98,7 @@ export function makeMotorcycle(group, color, shirt) {
   }
 
 
-  const rider = new THREE.Group();
-  const jacket = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.9 });
-  const torso = part(rider, sphere, jacket, 0, 1.13, 0.04, 0.24, 0.37, 0.17);
-  torso.rotation.x = -0.35;
-  part(rider, sphere, dark, 0, 1.51, -0.12, 0.205, 0.22, 0.21);
-  part(rider, sphere, glass, 0, 1.53, -0.265, 0.17, 0.09, 0.08);
-  block(rider, paint, 0, 1.3, 0.19, 0.29, 0.05, 0.03);
-  for (const side of [-1, 1]) {
-    part(rider, sphere, paint, side * 0.18, 1.28, 0.035, 0.1, 0.11, 0.15);
-    block(rider, pearl, side * 0.085, 1.11, 0.195, 0.035, 0.25, 0.018);
-  }
-  part(rider, sphere, paint, 0, 1.665, -0.12, 0.08, 0.045, 0.17);
-  for (const side of [-1, 1]) {
-    link(rider, dark, [side * 0.17, 0.88, 0.35], [side * 0.29, 0.61, -0.02], 0.16);
-    link(rider, dark, [side * 0.29, 0.61, -0.02], [side * 0.25, 0.3, 0.22], 0.13);
-    block(rider, rubber, side * 0.25, 0.29, 0.12, 0.16, 0.13, 0.3);
-    link(rider, jacket, [side * 0.2, 1.3, -0.04], [side * 0.3, 1.08, -0.22], 0.12);
-    link(rider, jacket, [side * 0.3, 1.08, -0.22], [side * 0.3, 0.96, -0.5], 0.1);
-  }
+  const rider = makeHumanRider(color, shirt);
   group.add(rider);
   return rider;
 }
