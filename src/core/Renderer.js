@@ -40,10 +40,22 @@ export class Renderer {
     this.camera.updateProjectionMatrix();
   }
 
-  // Keep the shadow frustum centered on the player
+  // Keep the shadow frustum centered on the player, snap to shadow-map texels to eliminate shimmer
   followSun(pos) {
     this.sun.target.position.copy(pos);
     this.sun.position.copy(pos).add(SUN_OFFSET);
+    const cam = this.sun.shadow.camera;
+    const mapSize = this.sun.shadow.mapSize;
+    const spanX = cam.right - cam.left;
+    const spanY = cam.top - cam.bottom;
+    const worldPerTexelX = spanX / mapSize.x;
+    const worldPerTexelY = spanY / mapSize.y;
+    this.sun.position.x = Math.floor(this.sun.position.x / worldPerTexelX) * worldPerTexelX + worldPerTexelX * 0.5;
+    this.sun.position.y = Math.floor(this.sun.position.y / worldPerTexelY) * worldPerTexelY + worldPerTexelY * 0.5;
+    this.sun.position.z = Math.floor(this.sun.position.z / worldPerTexelX) * worldPerTexelX + worldPerTexelX * 0.5;
+    this.sun.target.position.x = Math.floor(this.sun.target.position.x / worldPerTexelX) * worldPerTexelX + worldPerTexelX * 0.5;
+    this.sun.target.position.y = 0;
+    this.sun.target.position.z = Math.floor(this.sun.target.position.z / worldPerTexelX) * worldPerTexelX + worldPerTexelX * 0.5;
   }
 
   render() { this.renderer.render(this.scene, this.camera); }

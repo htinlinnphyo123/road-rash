@@ -35,13 +35,18 @@ export const COMBAT = {
   // Hitbox is expressed in the attacker's local frame (fwd = forward, side = outward from the bike).
   // The box sweeps from `back` to `front` while the swing is active.
   weapons: {
-    bat:  { cost: 22, windup: 0.1, active: 0.22, recovery: 0.26, damage: 18, knock: 15, stagger: 0.65,
-            inner: 0.25, reach: 2.4, halfLen: 1.0, back: -1.0, front: 1.2, length: 2.2 },
-    kick: { cost: 12, windup: 0.08, active: 0.10, recovery: 0.22, damage: 8, knock: 8, stagger: 0.35,
-            inner: 0.25, reach: 1.3, halfLen: 0.6, back: -0.6, front: 0.8, length: 1.0 },
+    bat:   { cost: 22, windup: 0.1, active: 0.22, recovery: 0.26, damage: 18, knock: 15, stagger: 0.65,
+             inner: 0.25, reach: 2.4, halfLen: 1.0, back: -1.0, front: 1.2, length: 2.2 },
+    kick:  { cost: 12, windup: 0.08, active: 0.10, recovery: 0.22, damage: 8, knock: 8, stagger: 0.35,
+             inner: 0.25, reach: 1.3, halfLen: 0.6, back: -0.6, front: 0.8, length: 1.0 },
+    pipe:  { cost: 30, windup: 0.16, active: 0.24, recovery: 0.36, damage: 28, knock: 22, stagger: 0.95,
+             inner: 0.25, reach: 2.6, halfLen: 1.1, back: -1.1, front: 1.3, length: 2.4 },
+    chain: { cost: 18, windup: 0.06, active: 0.28, recovery: 0.18, damage: 12, knock: 10, stagger: 0.45,
+             inner: 0.25, reach: 3.1, halfLen: 0.8, back: -0.6, front: 1.0, length: 1.6 },
   },
 };
-export const UI = { messageDuration: 1.8, lowHealthPercent: 30, hitMarkerDuration: 0.22 };
+export const UI = { messageDuration: 1.8, lowHealthPercent: 30, hitMarkerDuration: 0.22,
+  wrongWayWarnTime: 0.6, wrongWayPenaltyTime: 1.8, wrongWayMinAngle: 1.1 };
 
 // Auto-throttle uses elapsed simulation time, never wall-clock time.
 export const AUTO_DRIVE = {
@@ -68,6 +73,8 @@ export const AI = {
   curveAcceleration: 19, minimumSpeed: 25, rubberBand: 0.07, maxCatchup: 7,
   approachRange: 32, attackOffset: 1.8, attackCooldown: 2.1,
   trafficHorizon: 1.5, trafficMargin: 9, trafficLaneGap: 2.3,
+  sideswipeLeadMin: 1.5, sideswipeLeadMax: 4.5, sideswipeLatGap: 3.0,
+  sideswipeAggression: 0.7, sideswipeSteerBias: 1.0, sideswipeDuration: 1.2,
 };
 export const RIVALS = [
   { name: 'RAVEN', style: 'BRAWLER', color: 0xb83bce, shirt: 0x322240, cruise: 53, aggression: 1 },

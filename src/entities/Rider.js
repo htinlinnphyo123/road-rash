@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { BIKE, ROAD, WALL, GROUP, COMBAT } from '../core/constants.js';
+import { BIKE, ROAD, WALL, GROUP, COMBAT, UI } from '../core/constants.js';
 import { events } from '../core/Events.js';
 import { Melee } from '../combat/Melee.js';
 import { makeWheel, makeMotorcycle } from '../visuals/Vehicles.js';
@@ -18,7 +18,7 @@ export class Rider {
     // Track-space state
     this.speed = 0; this.yaw = 0; this.relYaw = 0;
     this.s = 0; this.lat = 0; this.drift = 0;
-    this.offRoad = false; this.scraping = false;
+    this.offRoad = false; this.scraping = false; this.wrongWay = false; this.wrongWayT = 0;
     this.tp = {}; this.v3 = new THREE.Vector3();
     this._inp = { throttle: 0, brake: 0, steer: 0, attackL: false, attackR: false };
     this._stag = { throttle: 0, brake: 0, steer: 0 };
@@ -98,9 +98,9 @@ export class Rider {
   resetRace(s, lat) {
     this.placeAt(s, lat, 0);
     this.health = BIKE.maxHealth; this.stamina = COMBAT.maxStamina; this.balance = COMBAT.maxBalance;
-    this.staminaDelay = this.stagger = this.invuln = this.impactCd = this.downT = 0;
+    this.staminaDelay = this.stagger = this.invuln = this.impactCd = this.downT = this.wrongWayT = 0;
     this.down = false; this.lean = this.leanTarget = 0;
-    this.offRoad = this.scraping = false;
+    this.offRoad = this.scraping = this.wrongWay = false;
     this.riderMesh.visible = this.mesh.visible = true;
     this.melee.cancel(); this.ragdoll.hide();
     if (this.isPlayer) this.rideTime = 0;
@@ -217,6 +217,12 @@ export class Rider {
     this.lat = lat;
     const absLat = Math.abs(lat);
     this.offRoad = absLat > hw;
+    let headingDelta = Math.abs(((this.relYaw + Math.PI) % (Math.PI * 2)) - Math.PI);
+    if (headingDelta > Math.PI / 2) headingDelta = Math.PI - headingDelta;
+    const againstFlow = Math.abs(this.relYaw) > UI.wrongWayMinAngle;
+    if (againstFlow && this.speed > 3) this.wrongWayT = Math.min(UI.wrongWayPenaltyTime + 1, this.wrongWayT + dt);
+    else this.wrongWayT = Math.max(0, this.wrongWayT - dt * 1.5);
+    this.wrongWay = this.wrongWayT > UI.wrongWayWarnTime;
 
     // Anti-tunneling backstop
     const limit = hw + WALL.shoulder - 0.4;
@@ -234,6 +240,7 @@ export class Rider {
       if (this.offRoad) resist += B.offRoadDrag * this.speed;
       if (this.scraping) resist += WALL.scrape;
       if (this.down) resist += COMBAT.slideDecel;
+      if (this.wrongWayT > UI.wrongWayPenaltyTime) resist += B.brake * 0.55;
     }
     const a = c.throttle * B.accel - c.brake * B.brake - resist;
     this.speed = clamp(this.speed + a * dt, 0, B.maxSpeed);

@@ -141,7 +141,11 @@ export class HUD {
     n.takedowns.textContent = String(this.takedowns).padStart(2, '0');
     n['cruise-status'].textContent = this.input.brake ? 'BRAKING' : this.input.throttle ? 'FULL THROTTLE' : `CRUISE TARGET ${Math.round(b.cruiseSpeed * 3.6)} KM/H`;
     n.weapon.textContent = b.melee.weaponName.toUpperCase();
-    n.warning.textContent = b.down ? 'RECOVERING…' : hp < UI.lowHealthPercent ? 'LOW HEALTH · RIDE CAREFULLY' : b.offRoad ? 'OFF ROAD · RETURN TO ASPHALT' : '';
+    document.body.classList.toggle('wrong-way', !!(b.wrongWay && b.wrongWayT <= UI.wrongWayPenaltyTime));
+    document.body.classList.toggle('wrong-way-penalty', !!(b.wrongWay && b.wrongWayT > UI.wrongWayPenaltyTime));
+    if (b.wrongWay && b.wrongWayT > UI.wrongWayPenaltyTime) n.warning.textContent = '⚠ WRONG WAY · SLOWING DOWN';
+    else if (b.wrongWay) n.warning.textContent = '⚠ TURN AROUND — WRONG WAY';
+    else n.warning.textContent = b.down ? 'RECOVERING…' : hp < UI.lowHealthPercent ? 'LOW HEALTH · RIDE CAREFULLY' : b.offRoad ? 'OFF ROAD · RETURN TO ASPHALT' : '';
     document.body.classList.toggle('low-health', hp < UI.lowHealthPercent);
   }
 }
