@@ -46,3 +46,11 @@ Existing uncommitted police/pickup/particle additions were inspected and retaine
 - New `src/visuals/HumanRider.js` builds a crouched human silhouette with an elliptical torso, tapered rounded limbs, proportional full-face helmet, collar/neck, bent knees/elbows, gloves, boots and restrained suit panels. Existing recoil and bike lean still apply.
 - Files: `src/visuals/HumanRider.js`, `src/visuals/Vehicles.js`, `src/style.css`, `AGENTS.md`, `IMPLEMENTATION.md`. No new gameplay constants or dependencies.
 - Production build and 18 regression tests pass, including close-camera fit and touch cancellation.
+
+## Replay challenges and readable combat
+
+- Choose five hits, five close calls or a podium finish. Finish the race to claim the 500/750-point bonus; results explain the outcome and allow choosing the next challenge.
+- Best time and score persist separately for Easy/Medium/Hard on the current device. Corrupt or unavailable storage never prevents racing.
+- Enemies telegraph swings for 0.35 seconds with an orange weapon glow and an in-range directional warning. Swinging arms replace resting arms during attacks and reset on interrupts.
+- Created `src/race/Records.js`. Edited `src/core/constants.js`, `src/race/Race.js`, `src/combat/Melee.js`, `src/visuals/HumanRider.js`, `src/ui/HUD.js`, `src/style.css`, `index.html`, `tests/race.test.js`, `tests/ride-controls.test.js`, `AGENTS.md`, and this file. New constants: `CHALLENGES`, `REPLAY`. No new dependencies.
+- All 21 regression tests pass; production build succeeds (existing bundle-size warning); mobile landscape challenge controls, portrait rotation prompt, and an isolated short-race results/retry flow checked in the browser. Physical-device checks remain outstanding.

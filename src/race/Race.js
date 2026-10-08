@@ -1,4 +1,5 @@
-import { RACE, DIFFICULTIES } from '../core/constants.js';
+import { RACE, DIFFICULTIES, CHALLENGES } from '../core/constants.js';
+import { Records } from './Records.js';
 import { events } from '../core/Events.js';
 
 export class Race {
@@ -6,7 +7,7 @@ export class Race {
     this.riders = riders; this.player = player; this.track = track; this.traffic = traffic;
     this.entries = riders.map((rider, index) => ({ rider, index, previousS: 0, finishTime: null }));
     this.standings = this.entries.slice();
-    this.difficulty = 'medium';
+    this.difficulty = 'medium'; this.challenge = 'hits'; this.records = new Records();
     this.state = 'menu'; this.resumeState = 'racing'; this.elapsed = 0;
     this.remainingCountdown = RACE.countdown; this.lastCount = RACE.countdown;
     this.finishS = RACE.startS + RACE.length;
@@ -18,6 +19,14 @@ export class Race {
     events.on('dismount', ({ attacker }) => { if (this.state === 'racing' && attacker === player) { this.takedowns++; this.score += RACE.takedownPoints; } });
     events.on('policeEscape', ({ points }) => { if (this.state === 'racing') this.score += points; });
     this.reset();
+  }
+  setChallenge(key) {
+    if (!Object.hasOwn(CHALLENGES, key) || (this.state !== 'menu' && this.state !== 'results')) return false;
+    this.challenge = key; return true;
+  }
+  challengeComplete(finished = false) {
+    const goal = CHALLENGES[this.challenge];
+    return this.challenge === 'podium' ? finished && this.rank <= goal.target : this[goal.stat] >= goal.target;
   }
   setDifficulty(key) {
     if (!Object.hasOwn(DIFFICULTIES, key) || (this.state !== 'menu' && this.state !== 'results')) return false;
@@ -90,8 +99,12 @@ export class Race {
     if (playerEntry.finishTime !== null || this.elapsed >= RACE.maxTime) {
       const finished = playerEntry.finishTime !== null;
       if (finished) this.score += RACE.finishPoints + (this.riders.length - this.rank) * RACE.positionPoints;
-      this.result = { finished, rank: this.rank, time: playerEntry.finishTime ?? this.elapsed,
+      const challengeWon = finished && this.challengeComplete(finished);
+      const bonus = challengeWon ? CHALLENGES[this.challenge].bonus : 0;
+      this.score += bonus;
+      this.result = { challengeWon, bonus, challenge: this.challenge, finished, rank: this.rank, time: playerEntry.finishTime ?? this.elapsed,
         score: this.score, takedowns: this.takedowns, nearMisses: this.nearMisses, topSpeed: this.topSpeed };
+      this.result.records = this.records.record(this.difficulty, this.result);
       this.setState('results'); events.emit('raceFinished', this.result);
     }
   }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { COMBAT } from '../core/constants.js';
+import { COMBAT, REPLAY } from '../core/constants.js';
 import { events } from '../core/Events.js';
 
 const ease = (t) => { t = Math.min(1, Math.max(0, t)); return t * t * (3 - 2 * t); };
@@ -18,7 +18,7 @@ export class Melee {
 
     for (const side of [-1, 1]) {
       const arm = new THREE.Group();
-      arm.position.set(side * 0.22, 1.15, 0.05);
+      arm.position.set(side * 0.215, 1.265, -0.1);
       const geo = new THREE.CylinderGeometry(0.045, 0.075, 1, 10);
       geo.rotateZ(-side * Math.PI / 2);
       geo.translate(side * 0.5, 0, 0); // pivot at the shoulder
@@ -26,7 +26,12 @@ export class Melee {
       mesh.castShadow = true;
       const grip = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.095, 0.095), new THREE.MeshStandardMaterial({ color: 0x20272b }));
       grip.position.x = side * 0.18;
-      arm.add(mesh, grip);
+      mesh.position.x = side * 0.52; grip.position.x = side * 0.60;
+      const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.5, 12), new THREE.MeshStandardMaterial({ color: 0x242a30, roughness: 0.8 }));
+      sleeve.rotation.z = Math.PI / 2; sleeve.position.x = side * 0.25;
+      const glove = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 8), new THREE.MeshStandardMaterial({ color: 0x14191d }));
+      glove.position.x = side * 0.53;
+      arm.add(mesh, grip, sleeve, glove);
       arm.visible = false;
       leanGroup.add(arm);
       const trail = new THREE.Mesh(new THREE.RingGeometry(0.35, 1, 24, 1, -0.9, 1.8),
@@ -50,13 +55,14 @@ export class Melee {
   }
 
   get weapon() { return COMBAT.weapons[this.weaponName]; }
+  get windup() { return this.owner.isPlayer ? this.weapon.windup : Math.max(this.weapon.windup, REPLAY.aiWindup); }
   get active() { return this.state === 'active'; }
   get progress() { return Math.min(1, this.t / this.weapon.active); }
 
   setWeapon(name) {
     this.weaponName = name;
     for (const side of [-1, 1]) {
-      this.arms[side].mesh.scale.x = this.weapon.length;
+      this.arms[side].mesh.scale.x = Math.max(0.3, this.weapon.length - 0.52);
       this.arms[side].trail.scale.setScalar(this.weapon.length);
     }
   }
@@ -85,6 +91,8 @@ export class Melee {
     this.bufferSide = 0; this.bufferTime = 0;
     this.arms[-1].arm.visible = this.arms[1].arm.visible = false;
     this.arms[-1].trail.visible = this.arms[1].trail.visible = false;
+    const ridingArms = this.owner.riderMesh?.userData.ridingArms;
+    if (ridingArms) { ridingArms[-1].visible = true; ridingArms[1].visible = true; }
     if (this.dbg) this.dbg.visible = false;
   }
 
@@ -93,7 +101,7 @@ export class Melee {
     if (this.state === 'idle') return;
     const w = this.weapon;
     this.t += dt;
-    if (this.state === 'windup' && this.t >= w.windup) { this.state = 'active'; this.t -= w.windup; }
+    if (this.state === 'windup' && this.t >= this.windup) { this.state = 'active'; this.t -= this.windup; }
     if (this.state === 'active' && this.t >= w.active) { this.state = 'recovery'; this.t -= w.active; }
     if (this.state === 'recovery' && this.t >= w.recovery) {
       const buffered = this.bufferTime > 0 ? this.bufferSide : 0;
@@ -107,7 +115,7 @@ export class Melee {
     if (this.state === 'idle') return;
     const w = this.weapon;
     let theta;
-    if (this.state === 'windup') theta = -0.2 + (-0.9 + 0.2) * ease(this.t / w.windup);
+    if (this.state === 'windup') theta = -0.2 + (-0.9 + 0.2) * ease(this.t / this.windup);
     else if (this.state === 'active') theta = -0.9 + 1.8 * ease(this.progress);
     else theta = 0.9 + (0.2 - 0.9) * ease(this.t / w.recovery);
 
@@ -115,6 +123,9 @@ export class Melee {
       const a = this.arms[side].arm;
       this.arms[side].trail.visible = this.active && side === this.side;
       a.visible = side === this.side;
+      const ridingArm = this.owner.riderMesh?.userData.ridingArms?.[side];
+      if (ridingArm) ridingArm.visible = !a.visible;
+      this.arms[side].mesh.material.emissive.setHex(this.state === 'windup' && !this.owner.isPlayer ? 0xe86112 : 0x000000);
       if (a.visible) a.rotation.y = side * theta;
     }
 

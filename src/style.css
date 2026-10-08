@@ -56,3 +56,8 @@ body.is-paused #combat-cue{visibility:hidden}
 /* Suppress double-tap zoom on overlays too, while retaining menu scrolling and pinch zoom. */
 html,body,button,select,.menu{touch-action:manipulation}
 #app,#app canvas,#touch-controls,#touch-controls button{touch-action:none}
+
+#race-challenge{position:absolute;top:195px;left:50%;transform:translateX(-50%);font-size:10px;letter-spacing:1px;color:#e8ff65;background:#10202bbb;padding:7px 10px;white-space:nowrap}
+#attack-warning{position:absolute;top:235px;left:50%;transform:translateX(-50%);color:#ffd49a;font-size:13px;font-weight:bold;white-space:nowrap;text-shadow:0 2px 4px #000}
+body.is-paused #race-challenge,body.is-paused #attack-warning{display:none}#result-challenge,#result-records,#personal-best{color:#e8ff65;font-size:11px}.difficulty-picker select{max-width:100%}
+@media(max-height:500px){#race-challenge{top:auto;bottom:16px;font-size:8px;max-width:38vw;white-space:normal;text-align:center}#attack-warning{top:150px;font-size:10px}.menu-card .menu-hint{display:none}.difficulty-picker select{font-size:12px;padding:6px}#results{overflow:auto}}

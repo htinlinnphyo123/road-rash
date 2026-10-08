@@ -1,4 +1,4 @@
-import { BIKE, COMBAT, UI, RACE, DIFFICULTIES, POLICE } from '../core/constants.js';
+import { BIKE, COMBAT, UI, RACE, DIFFICULTIES, POLICE, CHALLENGES } from '../core/constants.js';
 import { events } from '../core/Events.js';
 
 export class HUD {
@@ -34,6 +34,14 @@ export class HUD {
           race.setDifficulty(picker.value);
           this.syncDifficulty();
         });
+      }
+      this.challengePickers = [document.getElementById('challenge'), document.getElementById('retry-challenge')];
+      for (const picker of this.challengePickers) {
+        for (const [key, goal] of Object.entries(CHALLENGES)) {
+          const option = document.createElement('option'); option.value = key;
+          option.textContent = `${goal.goal} · +${goal.bonus}`; picker.appendChild(option);
+        }
+        picker.addEventListener('change', () => { race.setChallenge(picker.value); this.syncDifficulty(); });
       }
       this.syncDifficulty();
       events.on('raceState', () => this.syncRace());
@@ -71,6 +79,11 @@ export class HUD {
       picker.value = this.race.difficulty;
       picker.disabled = this.race.state !== 'menu' && this.race.state !== 'results';
     }
+    for (const picker of this.challengePickers || []) {
+      picker.value = this.race.challenge; picker.disabled = this.race.state !== 'menu' && this.race.state !== 'results';
+    }
+    const best = this.race.records.data[this.race.difficulty];
+    document.getElementById('personal-best').textContent = best ? `PERSONAL BEST · ${this.formatTime(best.time)} · ${best.score} PTS` : 'Finish a race to set your first personal best.';
     document.getElementById('difficulty-hint').textContent = DIFFICULTIES[this.race.difficulty].description;
   }
   syncRace() {
@@ -91,6 +104,8 @@ export class HUD {
     this.nodes.msg.textContent = '';
     this.nodes['result-title'].textContent = result.finished ? result.rank === 1 ? 'VICTORY!' : `FINISHED #${result.rank}` : 'TIME UP';
     this.nodes['result-stats'].textContent = `${this.formatTime(result.time)} · ${result.score} POINTS · ${result.takedowns} TAKEDOWNS · ${result.nearMisses} CLOSE CALLS`;
+    document.getElementById('result-challenge').textContent = result.challengeWon ? `CHALLENGE COMPLETE · +${result.bonus} POINTS` : `${CHALLENGES[result.challenge].goal} · ${result.finished ? 'Try this challenge again' : 'Finish the race to claim the bonus'}`;
+    document.getElementById('result-records').textContent = `${result.records.newTime ? 'NEW BEST TIME! ' : ''}${result.records.newScore ? 'NEW HIGH SCORE! ' : ''}${!result.finished ? 'Finish a race to set a personal best.' : this.race.records.saved ? 'Records saved on this device.' : 'Records available for this session only.'}`;
     this.nodes['result-order'].replaceChildren();
     for (let i = 0; i < this.race.standings.length; i++) {
       const entry = this.race.standings[i], row = document.createElement('li');
@@ -127,6 +142,14 @@ export class HUD {
       n['race-remaining'].textContent = `${(Math.max(0, this.race.finishS - b.s) / 1000).toFixed(2)} KM LEFT`;
       n['race-progress'].style.width = `${Math.max(0, Math.min(100, (b.s - RACE.startS) / RACE.length * 100))}%`;
       n['race-score'].textContent = `${this.race.score} PTS`;
+      const goal = CHALLENGES[this.race.challenge];
+      document.getElementById('race-challenge').textContent = this.race.challenge === 'podium' ? `GOAL · TOP 3 FINISH · +${goal.bonus}` : `${goal.goal.toUpperCase()} · ${Math.min(goal.target, this.race[goal.stat])}/${goal.target} · ${this.race.challengeComplete() ? 'FINISH TO CLAIM' : '+' + goal.bonus}`;
+      let threat = null;
+      for (const fighter of this.combat.fighters) {
+        if (fighter.melee.state === 'windup' && this.combat.inRange(fighter, b, fighter.melee.side)) { threat = fighter; break; }
+      }
+      const warning = document.getElementById('attack-warning');
+      warning.textContent = threat ? (threat.lat < b.lat ? '← ATTACK FROM LEFT · MOVE RIGHT' : 'ATTACK FROM RIGHT · MOVE LEFT →') : '';
     }
     this.hitTime = Math.max(0, this.hitTime - dt);
     n['hit-marker'].classList.toggle('landed', this.hitTime > 0);

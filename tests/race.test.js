@@ -205,3 +205,41 @@ test('patrol bikes advance through actual physics with finite interpolated trans
     assert(Number.isFinite(cop.mesh.position.x)); assert(Number.isFinite(cop.mesh.rotation.y));
   }
 });
+
+
+test('challenges lock during a race, pay once on finish and never pay on timeout', () => {
+  const { race, player } = setup();
+  assert(race.setChallenge('hits')); race.start(); race.setState('racing');
+  assert.equal(race.setChallenge('podium'), false);
+  race.hits = 5; player.placeAt(race.finishS + 1, 0, 30); race.postStep(1 / 60);
+  assert(race.result.challengeWon); assert.equal(race.result.bonus, 500);
+  const score = race.score; race.postStep(1 / 60); assert.equal(race.score, score);
+  race.start(); race.setState('racing'); race.hits = 5; race.elapsed = RACE.maxTime; race.postStep(1 / 60);
+  assert.equal(race.result.challengeWon, false); assert.equal(race.result.bonus, 0);
+});
+
+test('records survive reload, isolate difficulty and tolerate blocked/corrupt storage', async () => {
+  const { Records } = await import('../src/race/Records.js');
+  let data = null; const storage = { getItem: () => data, setItem: (_, value) => { data = value; } };
+  const records = new Records(storage);
+  assert.deepEqual(records.record('medium', { finished: true, time: 90, score: 500 }), { newScore: true, newTime: true });
+  records.record('medium', { finished: true, time: 100, score: 700 });
+  const restored = new Records(storage); assert.deepEqual(restored.data.medium, { time: 90, score: 700 });
+  assert.equal(restored.data.hard, undefined);
+  restored.record('hard', { finished: false, time: 240, score: 5000 }); assert.equal(restored.data.hard, undefined);
+  data = '{broken'; assert.deepEqual(new Records(storage).data, {});
+  const blocked = new Records({ getItem() { throw Error(); }, setItem() { throw Error(); } });
+  blocked.record('easy', { finished: true, time: 120, score: 400 }); assert.equal(blocked.saved, false);
+});
+
+test('rival wind-up is readable and animated arms restore after an interruption', () => {
+  const { player, opponents } = setup(); const rival = opponents[0], m = rival.melee;
+  assert(m.windup > player.melee.windup);
+  m.tryStart(1); m.update(0.2); assert.equal(m.active, false); m.pose();
+  assert.equal(rival.riderMesh.userData.ridingArms[1].visible, false);
+  assert.equal(rival.riderMesh.userData.ridingArms[-1].visible, true);
+  assert(m.arms[1].mesh.material.emissive.getHex() !== 0);
+  m.update(m.windup); assert(m.active); m.cancel();
+  assert.equal(rival.riderMesh.userData.ridingArms[1].visible, true);
+  assert.equal(m.arms[1].arm.visible, false);
+});

@@ -117,3 +117,10 @@ export const DIFFICULTIES = {
   hard: { label: 'Hard', description: 'Relentless pace · aggressive combat', speed: 9, acceleration: 23, aggression: 1.5, cooldown: 0.6, catchup: 10, curve: 1.2 },
 };
 export const HIT_FX = { duration: 0.38, recoilDuration: 0.5, recoilAngle: 0.38, flashDuration: 0.18, playerShake: 0.9, attackShake: 0.65 };
+
+export const CHALLENGES = {
+  hits: { label: 'Street fighter', goal: 'Land 5 hits', stat: 'hits', target: 5, bonus: 500 },
+  nearMisses: { label: 'Thread the needle', goal: 'Make 5 close calls', stat: 'nearMisses', target: 5, bonus: 500 },
+  podium: { label: 'Podium hunter', goal: 'Finish in the top 3', stat: 'rank', target: 3, bonus: 750 },
+};
+export const REPLAY = { storageKey: 'road-rash-records-v1', aiWindup: 0.35 };

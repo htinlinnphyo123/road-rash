@@ -28,6 +28,7 @@ torsoGeometry.setIndex(indices); torsoGeometry.computeVertexNormals();
 
 export function makeHumanRider(color, shirt) {
   const rider = new THREE.Group();
+  rider.userData.ridingArms = {};
   const jacket = new THREE.MeshStandardMaterial({ color: shirt, roughness: 0.78 });
   const helmet = new THREE.MeshStandardMaterial({ color: 0x30343a, roughness: 0.28, metalness: 0.2 });
   const trim = new THREE.MeshStandardMaterial({ color, roughness: 0.5 });
@@ -60,10 +61,15 @@ export function makeHumanRider(color, shirt) {
     part(sphere, leather, side * 0.28, 0.245, 0.04, 0.08, 0.06, 0.15);
     const shoulder = [side * 0.215, 1.265, -0.10], elbow = [side * 0.32, 1.095, -0.12];
     const hand = [side * 0.30, 0.97, -0.49];
+    const armStart = rider.children.length;
     limb(jacket, shoulder, elbow, 0.077); limb(jacket, elbow, hand, 0.06);
     part(sphere, jacket, ...shoulder, 0.079, 0.083, 0.08);
     part(sphere, armor, ...elbow, 0.066, 0.067, 0.065);
     part(sphere, leather, ...hand, 0.054, 0.045, 0.071);
+    const ridingArm = new THREE.Group();
+    const armParts = rider.children.slice(armStart);
+    for (const mesh of armParts) ridingArm.add(mesh);
+    rider.add(ridingArm); rider.userData.ridingArms[side] = ridingArm;
     limb(trim, [side * 0.235, 1.28, -0.005], [side * 0.17, 1.17, 0.15], 0.013);
     limb(seam, [side * 0.12, 1.23, 0.038], [side * 0.09, 1.03, 0.235], 0.005);
     part(sphere, armor, side * 0.157, 1.48, -0.22, 0.009, 0.022, 0.025);

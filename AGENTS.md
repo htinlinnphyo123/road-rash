@@ -55,7 +55,7 @@ src/
     Events.js            Tiny event bus: events.on / events.emit
     AssetManager.js      GLTF / texture / Howler preloader
     manifest.js          Local audio manifest; vehicles remain procedural
-    constants.js         ALL tunable numbers: FIXED_DT, ROAD, BIKE, GROUP, WALL, COMBAT, UI, AUTO_DRIVE, RIDER_CAMERA, RACE, AI, RIVALS, AUDIO, DIFFICULTIES, HIT_FX, POLICE, FX, PICKUPS
+    constants.js         ALL tunable numbers: FIXED_DT, ROAD, BIKE, GROUP, WALL, COMBAT, UI, AUTO_DRIVE, RIDER_CAMERA, RACE, AI, RIVALS, AUDIO, DIFFICULTIES, HIT_FX, POLICE, FX, PICKUPS, CHALLENGES, REPLAY
   world/
     Track.js             Procedural centerline in track space (s, lateral), project(), at(), pointAt()
     Road.js              Pooled road mesh chunks + grass plane
@@ -79,7 +79,8 @@ src/
     RiderCamera.js       Close third-person camera, 4.2 m follow distance, mild lean and shake
   ai/AIRider.js          Track-space racing, traffic avoidance and combat brain
   ai/Police.js           Two pooled patrol riders, timed pursuit and escape lifecycle
-  race/Race.js           Countdown, ranking, scoring, finish/time limit and reset
+  race/Race.js           Countdown, ranking, scoring, challenges, finish/time limit and reset
+  race/Records.js        Device-local best time/score per difficulty with safe storage fallback
   audio/GameAudio.js     Gesture-unlocked Howler loops and event effects
   ui/HUD.js              Event-driven HUD, start/countdown/results, race HUD, pause/resume, warnings
   visuals/Vehicles.js    Modern sport-bike, racing rider and coupe/fastback/sedan builders
@@ -146,6 +147,8 @@ src/
 
 17. Mobile surfaces use touch-action: manipulation to suppress double-tap zoom; canvas and driving controls use none. Menu scrolling and pinch zoom remain available. Rider visuals now use a shaped torso, tapered rounded limbs, smaller helmet, articulated riding posture and restrained protective gear.
 
+18. Three selectable race challenges reward five hits, five close calls or a top-three finish. Bonuses require finishing and pay once. Challenge selection locks during a race. `CHALLENGES` defines goals/rewards; `REPLAY` defines the local records key and 0.35-second enemy wind-up. Best finish time and score persist per difficulty when browser storage is available. Results identify new records and challenge rewards. Enemy weapons glow during wind-up, nearby attacks show a directional dodge warning, and the visible attack arm replaces the resting arm during swings.
+
 ## 8. Known limitations / tech debt
 
 - Track is flat. No hills; hills would need a heightfield or trimesh collider and track-space `y`.
@@ -159,7 +162,7 @@ src/
 - Shadow shimmer is possible at high speed because the sun follows the player each frame (texel snapping not implemented).
 - AI uses bounded lane/traffic heuristics; deliberate sideswipe maneuvers and richer tactics remain.
 - Police are motorcycle units using arcade rider physics; no patrol cars or arrest/custody state.
-- One race route; no persistent unlocks, garage or championship progression yet.
+- One race route; no persistent unlocks, garage or championship progression yet. Personal bests are device-local and do not sync; clearing browser storage removes them.
 
 ## 9. Roadmap
 
@@ -175,10 +178,11 @@ src/
 
 **Step 7 — UI & HUD (`src/ui/`)**
 - Done: animated boot splash, single-action auto-side attacks, combat reach cues and hit feedback, HUD module, speedometer, health/stamina, low-health/off-road warnings and takedown banners. Done: live position/rank, time, distance remaining and score. Remaining: wrong-way and rearview indicators.
-- Done: start/pause, countdown, finish/time-limit results and retry.
+- Done: start/pause, countdown, finish/time-limit results and retry, selectable finish-dependent challenges, per-difficulty personal bests and directional attack warnings.
 - Tailwind optional; keep the HUD out of `main.js`
 
 **Step 8 — Polish & content**
+- Done: arm-connected melee visuals and longer highlighted enemy wind-up for readable counterplay.
 - Done: pooled police motorcycle pursuit, distinct patrol model, siren, warnings, survival reward and visible collision/melee sparks. Existing pipe/chain pickups retained.
 - Done: close third-person rider camera, modern sculpted sport-bike and three car body styles, touch landscape layout and progressive auto-throttle. Remaining: physical-device performance pass and optional tilt steering.
 - GLB models for bikes/riders/cars, weapon variety (pipe, chain), additional pickups, patrol cars, track themes, shadow texel snapping, performance pass (instancing, LOD)
@@ -200,6 +204,8 @@ src/
 12. `node --test tests/*.test.js` also verifies race state, finish order, scoring, AI attacks/avoidance, full-distance physics simulation and retry object reuse.
 13. Check countdown, sound toggle, pause silence, results and retry in-browser. Check difficulty selection before start and retry, ten-racer standings scrolling on phone, and contact/recoil effects. Tests also cover difficulty locking and hit-effect reuse/reset.
 14. Verify automatic police warning/spawn, police receiving hits, pursuit reward once, pause/resume and retry cleanup. `node --test tests/*.test.js` covers police and spark pooling/lifecycle as well as the race/control regressions.
+
+15. Verify all challenge options before start/on results, locked selection in-race, one-time finish bonuses, saved records after reload and graceful storage failure. Tests cover challenge rewards, record persistence and enemy wind-up/arm reset.
 
 ## 11. Working agreement for AI agents
 
